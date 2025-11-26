@@ -95,15 +95,83 @@ runs:
         . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
         hash -r
         echo "PATH=$PATH" >> $GITHUB_ENV
-    
-    # NOTE: It feels bad to have sudo statements here but I could not get the post install to work
-    # without both of them in place on linux. Neither (and chmod at all) is required on macOS.
-    # So this would be nice to dig into more but definitely done for now. 
-    - name: Install Swift Toolchain
+
+    - name: Resolve Swift Version
+      id: resolve-version
       shell: bash
       run: |
-        swiftly install --use ${{ inputs.swift-version }} --post-install-file=post-install.sh
+        INPUT_VERSION="${{ inputs.swift-version }}"
+        TOOLCHAINS=$(swiftly list-available --format json)
+
+        if [ "$INPUT_VERSION" = "latest" ]; then
+          # Latest stable release
+          RESOLVED=$(echo "$TOOLCHAINS" | jq -r '.toolchains[0].version.name')
+        elif [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # Exact version (e.g., 6.2.1) - use as-is
+          RESOLVED="$INPUT_VERSION"
+        elif [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          # Minor version (e.g., 6.2) - find latest patch
+          MAJOR=$(echo "$INPUT_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$INPUT_VERSION" | cut -d. -f2)
+          RESOLVED=$(echo "$TOOLCHAINS" | jq -r --arg maj "$MAJOR" --arg min "$MINOR" \
+            '.toolchains | map(select(.version.major == ($maj | tonumber) and .version.minor == ($min | tonumber))) | .[0].version.name')
+        elif [[ "$INPUT_VERSION" =~ ^[0-9]+$ ]]; then
+          # Major version (e.g., 6) - find latest minor.patch
+          RESOLVED=$(echo "$TOOLCHAINS" | jq -r --arg maj "$INPUT_VERSION" \
+            '.toolchains | map(select(.version.major == ($maj | tonumber))) | .[0].version.name')
+        else
+          # Snapshot or other format - use as-is
+          RESOLVED="$INPUT_VERSION"
+        fi
+
+        echo "Resolved '$INPUT_VERSION' to: $RESOLVED"
+        echo "version=$RESOLVED" >> $GITHUB_OUTPUT
+
+    # Toolchain Caching
+    - name: Restore Swift Toolchain - macOS
+      if: ${{ runner.os == 'macOS' }}
+      uses: actions/cache/restore@v4
+      id: restore-toolchain-cache-macos
+      with:
+        path: ~/Library/Developer/Toolchains
+        key: swift-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.resolve-version.outputs.version }}
+
+    - name: Restore Swift Toolchain - Linux
+      if: ${{ runner.os == 'Linux' }}
+      uses: actions/cache/restore@v4
+      id: restore-toolchain-cache-linux
+      with:
+        path: ~/.local/share/swiftly/toolchains
+        key: swift-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.resolve-version.outputs.version }}
+
+    # NOTE: It feels bad to have sudo statements here but I could not get the post install to work
+    # without both of them in place on linux. Neither (and chmod at all) is required on macOS.
+    # So this would be nice to dig into more but definitely done for now.
+    - name: Install Swift Toolchain
+      if: ${{ (runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit != 'true') || (runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit != 'true') }}
+      shell: bash
+      run: |
+        swiftly install --use ${{ steps.resolve-version.outputs.version }} --post-install-file=post-install.sh
         if [ -f post-install.sh ]; then
           sudo chmod u+x post-install.sh
           sudo ./post-install.sh
         fi
+
+    - name: Cache Swift Toolchain - macOS
+      if: ${{ runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: ~/Library/Developer/Toolchains
+        key: swift-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.resolve-version.outputs.version }}
+
+    - name: Cache Swift Toolchain - Linux
+      if: ${{ runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.local/share/swiftly/toolchains
+        key: swift-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.resolve-version.outputs.version }}
+
+    - name: Activate Cached Toolchain
+      if: ${{ (runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit == 'true') || (runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit == 'true') }}
+      shell: bash
+      run: swiftly use ${{ steps.resolve-version.outputs.version }}
