@@ -171,11 +171,18 @@ runs:
         path: ~/.local/share/swiftly/toolchains
         key: swift-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.resolve-version.outputs.version }}
 
-    - name: Activate Cached Toolchain
-      if: ${{ (runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit == 'true') || (runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit == 'true') }}
+    - name: Activate Cached Toolchain - Linux
+      if: ${{ runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit == 'true' }}
       shell: bash
       run: |
-        echo "Cached toolchains:"
-        ls -la ~/.local/share/swiftly/toolchains/ 2>/dev/null || ls -la ~/Library/Developer/Toolchains/ 2>/dev/null || echo "No toolchains found"
-        swiftly link ${{ steps.resolve-version.outputs.version }}
-        swiftly use ${{ steps.resolve-version.outputs.version }}
+        TOOLCHAIN_PATH="$HOME/.local/share/swiftly/toolchains/${{ steps.resolve-version.outputs.version }}/usr/bin"
+        echo "Adding cached toolchain to PATH: $TOOLCHAIN_PATH"
+        echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+
+    - name: Activate Cached Toolchain - macOS
+      if: ${{ runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit == 'true' }}
+      shell: bash
+      run: |
+        TOOLCHAIN_PATH="$HOME/Library/Developer/Toolchains/swift-${{ steps.resolve-version.outputs.version }}-RELEASE.xctoolchain/usr/bin"
+        echo "Adding cached toolchain to PATH: $TOOLCHAIN_PATH"
+        echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
