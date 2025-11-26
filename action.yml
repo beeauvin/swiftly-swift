@@ -31,73 +31,69 @@ runs:
         echo "::error::Only supports macOS and linux"
         exit 1
 
-    - name: Get Date
-      id: date
-      shell: bash
-      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
+    # Swiftly Caching - cache the installed swiftly, use self-update to keep current
     - name: Restore Swiftly - macOS
       if: ${{ runner.os == 'macOS' }}
       uses: actions/cache/restore@v4
       id: restore-swiftly-cache-macos
       with:
-        path: swiftly.pkg
-        key: swiftly-${{ runner.os }}-${{ runner.arch }}-${{ steps.date.outputs.date }}
+        path: ~/.swiftly
+        key: swiftly-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Download Swiftly - macOS
-      if: ${{ runner.os == 'macOS' && steps.restore-swiftly-cache-macos.outputs.cache-hit != 'true' }}
-      shell: bash
-      run: |
-        curl -O https://download.swift.org/swiftly/darwin/swiftly.pkg
-        pkgutil --check-signature swiftly.pkg
-
-    - name: Cache Swiftly - macOS
-      if: ${{ runner.os == 'macOS' && steps.restore-swiftly-cache-macos.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
-      id: save-swiftly-cache-macos
-      with:
-        path: swiftly.pkg
-        key: swiftly-${{ runner.os }}-${{ runner.arch }}-${{ steps.date.outputs.date }}
-
-    - name: Install Swiftly - macOS
-      if: ${{ runner.os == 'macOS' }}
-      shell: bash
-      run: |
-        installer -pkg swiftly.pkg -target CurrentUserHomeDirectory
-        ~/.swiftly/bin/swiftly init --verbose --assume-yes --skip-install
-        . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
-        hash -r
-        echo "PATH=$PATH" >> $GITHUB_ENV
-  
     - name: Restore Swiftly - Linux
       if: ${{ runner.os == 'Linux' }}
       uses: actions/cache/restore@v4
       id: restore-swiftly-cache-linux
       with:
-        path: swiftly.tar.gz
-        key: swiftly-${{ runner.os }}-${{ runner.arch }}-${{ steps.date.outputs.date }}
+        path: ~/.local/share/swiftly
+        key: swiftly-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Download Swiftly - Linux
+    - name: Install Swiftly - macOS
+      if: ${{ runner.os == 'macOS' && steps.restore-swiftly-cache-macos.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        curl -O https://download.swift.org/swiftly/darwin/swiftly.pkg
+        pkgutil --check-signature swiftly.pkg
+        installer -pkg swiftly.pkg -target CurrentUserHomeDirectory
+        ~/.swiftly/bin/swiftly init --verbose --assume-yes --skip-install
+
+    - name: Install Swiftly - Linux
       if: ${{ runner.os == 'Linux' && steps.restore-swiftly-cache-linux.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
         curl -o swiftly.tar.gz https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+        tar -zxf swiftly.tar.gz
+        ./swiftly init --verbose --assume-yes --skip-install
+
+    - name: Cache Swiftly - macOS
+      if: ${{ runner.os == 'macOS' && steps.restore-swiftly-cache-macos.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.swiftly
+        key: swiftly-${{ runner.os }}-${{ runner.arch }}
 
     - name: Cache Swiftly - Linux
       if: ${{ runner.os == 'Linux' && steps.restore-swiftly-cache-linux.outputs.cache-hit != 'true' }}
       uses: actions/cache/save@v4
-      id: save-swiftly-cache-linux
       with:
-        path: swiftly.tar.gz
-        key: swiftly-${{ runner.os }}-${{ runner.arch }}-${{ steps.date.outputs.date }}
+        path: ~/.local/share/swiftly
+        key: swiftly-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Install Swiftly - Linux
+    - name: Activate Swiftly - macOS
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+        swiftly self-update --assume-yes || true
+        hash -r
+        echo "PATH=$PATH" >> $GITHUB_ENV
+
+    - name: Activate Swiftly - Linux
       if: ${{ runner.os == 'Linux' }}
       shell: bash
       run: |
-        tar -zxf swiftly.tar.gz
-        ./swiftly init --verbose --assume-yes --skip-install
         . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+        swiftly self-update --assume-yes || true
         hash -r
         echo "PATH=$PATH" >> $GITHUB_ENV
 
