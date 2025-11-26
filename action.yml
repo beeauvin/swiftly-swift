@@ -175,5 +175,7 @@ runs:
       if: ${{ (runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit == 'true') || (runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit == 'true') }}
       shell: bash
       run: |
-        swiftly link
+        echo "Cached toolchains:"
+        ls -la ~/.local/share/swiftly/toolchains/ 2>/dev/null || ls -la ~/Library/Developer/Toolchains/ 2>/dev/null || echo "No toolchains found"
+        swiftly link ${{ steps.resolve-version.outputs.version }}
         swiftly use ${{ steps.resolve-version.outputs.version }}
