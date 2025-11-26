@@ -20,18 +20,18 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        swift-version: ["latest", "6.1"]
+        swift-version: ["latest", "6", "6.1"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - uses: ./
+        id: swiftly-swift
         with:
           swift-version: ${{ matrix.swift-version }}
-      - name: test - latest
-        if: ${{ matrix.swift-version == 'latest' }}
+      - name: Verify Swift Version
         shell: bash
-        run: swift --version | grep -q 'Swift version'
-      - name: test - version
-        if: ${{ matrix.swift-version != 'latest' }}
-        shell: bash
-        run: swift --version | grep -q 'Swift version ${{ matrix.swift-version }}'
+        run: |
+          echo "Input version: ${{ matrix.swift-version }}"
+          echo "Resolved version: ${{ steps.swiftly-swift.outputs.swift-version }}"
+          swift --version
+          swift --version | grep -q 'Swift version ${{ steps.swiftly-swift.outputs.swift-version }}'
