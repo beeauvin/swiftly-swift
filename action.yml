@@ -174,4 +174,6 @@ runs:
     - name: Activate Cached Toolchain
       if: ${{ (runner.os == 'macOS' && steps.restore-toolchain-cache-macos.outputs.cache-hit == 'true') || (runner.os == 'Linux' && steps.restore-toolchain-cache-linux.outputs.cache-hit == 'true') }}
       shell: bash
-      run: swiftly use ${{ steps.resolve-version.outputs.version }}
+      run: |
+        swiftly link
+        swiftly use ${{ steps.resolve-version.outputs.version }}
