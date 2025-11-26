@@ -12,12 +12,15 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        swift-version: ['latest', '6.1']
+        swift-version: ["latest", "6.1"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
