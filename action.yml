@@ -16,6 +16,11 @@ inputs:
     required: true
     default: latest
 
+outputs:
+  swift-version:
+    description: The resolved Swift version that was installed.
+    value: ${{ steps.resolve-version.outputs.version }}
+
 runs:
   using: composite
   steps:
