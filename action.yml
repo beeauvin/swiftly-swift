@@ -16,7 +16,7 @@ inputs:
     required: true
     default: latest
   swiftly-cache:
-    description: Whether to cache the swiftly installation. Set to false to force a fresh download.
+    description: Whether to cache the swiftly installation. Set to false to disable caching and install fresh on each run.
     required: false
     default: "true"
 
