@@ -1,6 +1,6 @@
-# Swiftly Swift - Github Action
+# Swiftly Swift - GitHub Action
 
-A Github Action to install [Swiftly](https://www.swift.org/swiftly/documentation/swiftlydocs/) and a swift 
+A GitHub Action to install [Swiftly](https://www.swift.org/swiftly/documentation/swiftlydocs/) and a swift 
 toolchain. Works with MacOS and Linux runners.
 
 ```yaml
