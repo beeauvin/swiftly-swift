@@ -17,7 +17,7 @@ version string supported by Swiftly (including snapshots) should work.
 ### Caching
 
 By default `swiftly-swift` will cache both swiftly itself and the swift toolchain it resolves. Because there
-is not a reliable way to track and download spwcific swiftly versions we default to caching whatever is
+is not a reliable way to track and download specific swiftly versions we default to caching whatever is
 pulled and using `self-update` on each run to try and keep it at latest. If caching breaks or some other
 tragedy occurs you can delete your action cache or disable caching by setting `swiftly-cache` to `false`.
 
